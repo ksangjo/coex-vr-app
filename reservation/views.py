@@ -5,36 +5,46 @@ from datetime import datetime
 
 def main_page(request):
     """1~4단계: 현재 시간 이후의 타임슬롯 목록을 생성하여 화면에 전달"""
-    # 15분 단위 전체 타임슬롯 리스트 생성 (10:00 ~ 17:45 시작 타임 기준)
-    all_slots = []
-    for hour in range(10, 18):
-        for minute in [0, 15, 30, 45]:
-            if hour == 17 and minute > 45: 
-                continue
-            all_slots.append(f"{hour:02d}:{minute:02d}")
-
-    # 현재 실제 한국 시간 확인 (페어 기간인 8월 5일~8일 상황을 시뮬레이션)
-    # 실제 현장 운영을 위해 현재 시, 분을 추출합니다.
     now = timezone.localtime(timezone.now())
     current_time_str = now.strftime("%H:%M")
 
-    # 이미 데이터베이스(DB)에 예약 완료된 시간대 목록 가져오기 (오늘 날짜 기준)
+    # 페어 기간(2026-08-05 ~ 08-08) 안에서 실제 운영 중인지 여부.
+    # 이 기간 안에 있을 때에만 "지나간 시간"을 마감 처리한다.
+    # (페어 기간 밖에서 테스트할 때는 현재 시각과 무관하게 모든 슬롯이 열려 있어야 함)
+    is_fair_now = (now.year == 2026 and now.month == 8 and 5 <= now.day <= 8)
+    display_day = now.day if is_fair_now else 5
+
+    # 이미 데이터베이스(DB)에 예약 완료된 시간대 목록 가져오기 (표시 날짜 기준)
     booked_slots = Reservation.objects.filter(
         reservation_datetime__year=2026,
         reservation_datetime__month=8,
-        reservation_datetime__day=now.day if now.month == 8 else 5
+        reservation_datetime__day=display_day
     ).values_list('reservation_datetime', flat=True)
-    
     # 비교하기 편하게 'HH:MM' 문자열 리스트로 변환
-    booked_times = [dt.strftime("%H:%M") for dt in booked_slots]
+    booked_times = [timezone.localtime(dt).strftime("%H:%M") for dt in booked_slots]
+
+    # 15분 단위 전체 타임슬롯 리스트 생성 (10:00 시작 ~ 17:45 시작, 마지막 종료 18:00)
+    # 각 슬롯은 시작/종료/표시라벨/마감여부를 담은 딕셔너리로 전달한다.
+    all_slots = []
+    for hour in range(10, 18):
+        for minute in [0, 15, 30, 45]:
+            start = f"{hour:02d}:{minute:02d}"
+            end_total = hour * 60 + minute + 15  # 종료 시간 = 시작 + 15분
+            end = f"{end_total // 60:02d}:{end_total % 60:02d}"
+
+            is_booked = start in booked_times
+            is_past = is_fair_now and start < current_time_str
+
+            all_slots.append({
+                'start': start,
+                'label': f"{start}~{end}",
+                'disabled': is_booked or is_past,
+            })
 
     # 화면 템플릿으로 시간 데이터 송출
     context = {
         'all_slots': all_slots,
-        'current_time': current_time_str,
-        'booked_times': booked_times,
-        # 실시간 날짜 확인용 (페어 기간 외에는 기본 8/5 타겟팅)
-        'display_day': now.day if now.month == 8 and 5 <= now.day <= 8 else 5
+        'display_day': display_day,
     }
     return render(request, 'reservation/main.html', context)
 

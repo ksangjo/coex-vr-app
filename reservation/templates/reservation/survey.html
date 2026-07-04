@@ -6,7 +6,7 @@
 
     <div id="surveySection">
         <div class="alert alert-success text-center fw-bold rounded-3 mb-4 py-3">
-            🎉 예약이 완료되었습니다!
+            예약이 완료되었습니다!
         </div>
         <h4 class="text-center fw-bold mb-4">당신이 관심 있는 공간을 선택하세요</h4>
         
@@ -17,33 +17,33 @@
         <div class="survey-card-group" id="q1">
             <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q1', '가족 주택')">
                 <img src="{% static 'reservation/images/house.jpg' %}" class="card-img-top" alt="가족 주택">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">👨‍👩‍👧‍👦 가족이 같이 사는 따뜻한 주택</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">가족이 같이 사는 따뜻한 주택</h5></div>
             </div>
             <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q1', '상업 건물')">
                 <img src="{% static 'reservation/images/shop.jpg' %}" class="card-img-top" alt="상업 건물">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🏢 깔끔하고 효율적인 상업 건물</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">깔끔하고 효율적인 상업 건물</h5></div>
             </div>
         </div>
 
         <div class="survey-card-group d-none" id="q2">
             <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q2', '대리석 마감')">
                 <img src="{% static 'reservation/images/marble.jpg' %}" class="card-img-top" alt="대리석 마감">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">✨ 세련된 대리석 마감</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">세련된 대리석 마감</h5></div>
             </div>
             <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q2', '목재 마감')">
                 <img src="{% static 'reservation/images/wood.jpg' %}" class="card-img-top" alt="목재 마감">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🪵 따뜻한 목재 마감</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">따뜻한 목재 마감</h5></div>
             </div>
         </div>
 
         <div class="survey-card-group d-none" id="q3">
             <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q3', '효율적 동선')">
                 <img src="{% static 'reservation/images/layout.jpg' %}" class="card-img-top" alt="효율적 동선">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🔄 동선이 효율적인 공간</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">동선이 효율적인 공간</h5></div>
             </div>
             <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q3', '높은 층고')">
                 <img src="{% static 'reservation/images/high.jpg' %}" class="card-img-top" alt="높은 층고">
-                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🚀 층고가 높은 공간</h5></div>
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">층고가 높은 공간</h5></div>
             </div>
         </div>
     </div>
@@ -62,7 +62,7 @@
                 <h5 class="fw-bold text-dark mb-3">높이나 공간감을 모니터로만 확인하나요?<br>도면과 몇 컷의 그림으로만 결정하셨나요?</h5>
                 <p class="text-secondary small m-0 card-text" style="line-height: 1.6;">
                     어떤 공간이든지 저희 VR 서비스를 통해 실제 크기와 지어질 모습을 생생하게 미리 경험해보실 수 있습니다.<br><br>
-                    정면에 보이는 부스 안내원에게 이름을 말씀하시고 바로 입장해 주세요!
+                    시작 10분 전에 입력한 전화번호로 문자가 갑니다. 예약한 시간에 맞추어 입장해 주세요!
                 </p>
             </div>
         </div>
@@ -100,6 +100,16 @@
 </script>
 
 <style>
+    /* 두 개의 선택 카드를 좌우로 나란히 배치 */
+    .survey-card-group {
+        display: flex;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    .survey-card-group .card {
+        flex: 1;                 /* 좌우 카드 폭 동일하게 */
+        margin-bottom: 0 !important;
+    }
     /* 이미지 카드 전용 고정 비율 및 터치 스타일링 */
     .card-img-top {
         height: 160px;

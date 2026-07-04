@@ -10,15 +10,15 @@
         body {
             font-family: 'Pretendard', sans-serif;
             background-color: #ffffff;
-            color: #ffffff;
+            color: #212529; /* 기본 글자색을 어두운 색으로 (흰 배경에 흰 글씨 방지) */
             user-select: none;
         }
         .app-container {
-            max-width: 500px;
+            max-width: 820px;        /* 태블릿(가로 약 810px) 기준 */
             min-height: 100vh;
             margin: 0 auto;
-            background: #ffffff; /* 본문 영역은 깔끔한 순백색 */
-            box-shadow: 0 0 30px rgba(0,0,0,0.08);
+            background: #ffffff;     /* 배경과 동일한 순백색으로 이어져 보이게 */
+            /* box-shadow 제거: 앱 영역과 배경이 분리되어 보이지 않도록 전체 흰색으로 통일 */
         }
         /* 장고 포인트 컬러: 신뢰감을 주는 파란색 계열 커스텀 */
         .btn-primary {
@@ -26,8 +26,8 @@
             border-color: #0052cc !important;
         }
         .btn-primary:hover, .btn-primary:active {
-            background-color: #0041a3 !important;
-            border-color: #0041a3 !important;
+            background-color: #0052cc !important;
+            border-color: #0052cc !important;
         }
         .btn-outline-primary {
             color: #0052cc !important;
@@ -35,6 +35,12 @@
         }
         .btn-outline-primary:hover {
             background-color: #0052cc !important;
+            color: #ffffff !important;
+        }
+        /* 라디오(성별/방문자 유형) 선택 시: 파란색으로 채우고 글자는 흰색 */
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0052cc !important;
+            border-color: #0052cc !important;
             color: #ffffff !important;
         }
         .text-primary {

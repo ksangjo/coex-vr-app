@@ -23,14 +23,14 @@
         
         <div class="row g-2 overflow-y-auto" style="max-height: 65vh;">
             {% for slot in all_slots %}
-                <div class="col-6">
-                    {% if slot < current_time or slot in booked_times %}
-                        <button type="button" class="btn btn-light w-100 py-3 text-muted border" disabled>
-                            {{ slot }} (마감)
+                <div class="col-3">
+                    {% if slot.disabled %}
+                        <button type="button" class="btn btn-light w-100 py-3 text-muted border small" disabled>
+                            {{ slot.label }} (마감)
                         </button>
                     {% else %}
-                        <button type="button" class="btn btn-outline-primary w-100 py-3 fw-semibold" onclick="selectTime('{{ slot }}')">
-                            {{ slot }}
+                        <button type="button" class="btn btn-outline-primary w-100 py-3 fw-semibold small" onclick="selectTime('{{ slot.start }}')">
+                            {{ slot.label }}
                         </button>
                     {% endif %}
                 </div>
@@ -42,44 +42,36 @@
         <h3 class="fw-bold mb-4">예약자 정보를<br>입력해 주세요</h3>
         
         <div class="mb-3">
-            <label class="form-label fw-semibold">이름 [cite: 51]</label>
+            <label class="form-label fw-semibold">이름</label>
             <input type="text" class="form-control form-control-lg" name="name" placeholder="홍길동" required>
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">성별 [cite: 51]</label>
+            <label class="form-label fw-semibold">성별</label>
             <div class="d-flex gap-2">
                 <input type="radio" class="btn-check" name="gender" id="genderM" value="M" checked>
-                <label class="btn btn-outline-secondary w-100 py-2" for="genderM">남성</label>
+                <label class="btn btn-outline-primary w-100 py-2" for="genderM">남성</label>
                 <input type="radio" class="btn-check" name="gender" id="genderF" value="F">
-                <label class="btn btn-outline-secondary w-100 py-2" for="genderF">여성</label>
+                <label class="btn btn-outline-primary w-100 py-2" for="genderF">여성</label>
             </div>
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">전화번호 [cite: 51]</label>
+            <label class="form-label fw-semibold">전화번호</label>
             <input type="tel" class="form-control form-control-lg" name="phone_number" placeholder="010-1234-5678" required>
         </div>
 
         <div class="mb-4">
             <label class="form-label fw-semibold">방문자 유형</label>
-            <div class="row g-2">
-                <div class="col-6">
-                    <input type="radio" class="btn-check" name="user_type" id="type1" value="interior" checked>
-                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type1">인테리어 업체</label>
-                </div>
-                <div class="col-6">
-                    <input type="radio" class="btn-check" name="user_type" id="type2" value="owner">
-                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type2">건축주</label>
-                </div>
-                <div class="col-6">
-                    <input type="radio" class="btn-check" name="user_type" id="type3" value="student">
-                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type3">학생</label>
-                </div>
-                <div class="col-6">
-                    <input type="radio" class="btn-check" name="user_type" id="type4" value="etc">
-                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type4">기타</label>
-                </div>
+            <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="user_type" id="type1" value="interior" checked>
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type1">인테리어 업체</label>
+                <input type="radio" class="btn-check" name="user_type" id="type2" value="owner">
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type2">건축주</label>
+                <input type="radio" class="btn-check" name="user_type" id="type3" value="student">
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type3">학생</label>
+                <input type="radio" class="btn-check" name="user_type" id="type4" value="etc">
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type4">기타</label>
             </div>
         </div>
 
@@ -109,11 +101,11 @@
         }
     });
 
-    // 무인 태블릿 리셋 타임아웃 60초
+    // 무인 태블릿 리셋 타임아웃 120초
     let idleTime = 0;
     setInterval(() => {
         idleTime++;
-        if (idleTime >= 60) { // 60초 경과 시 작동
+        if (idleTime >= 120) { // 120초 경과 시 작동
             nextStep(1);
             document.getElementById('reservationForm').reset();
             idleTime = 0;
