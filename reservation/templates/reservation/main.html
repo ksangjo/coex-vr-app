@@ -1,0 +1,124 @@
+{% extends 'reservation/base.html' %}
+
+{% block content %}
+<form id="reservationForm" method="POST" action="{% url 'survey_page' %}">
+    {% csrf_token %}
+    <input type="hidden" id="selected_time" name="reservation_time">
+
+    <div id="step1" class="step-page active text-center bg-white text-black justify-content-between py-5">
+        <div class="my-auto">
+            <h1 class="display-5 fw-bold mb-4">짓기 전에<br>들어가보세요.</h1>
+            <p class="lead text-secondary">igloo-vr</p>
+        </div>
+        <div class="px-3 w-100">
+            <button type="button" class="btn btn-light btn-lg w-100 py-3 fw-bold rounded-pill shadow-sm animate-pulse" onclick="nextStep(2)">
+                화면을 터치하여 예약하기
+            </button>
+        </div>
+    </div>
+
+    <div id="step2" class="step-page">
+        <h3 class="fw-bold mb-4">원하시는 체험 시간을<br>선택해 주세요</h3>
+        <p class="text-muted small mb-3">오늘(8/{{ display_day }}) 예약 타임슬롯</p>
+        
+        <div class="row g-2 overflow-y-auto" style="max-height: 65vh;">
+            {% for slot in all_slots %}
+                <div class="col-6">
+                    {% if slot < current_time or slot in booked_times %}
+                        <button type="button" class="btn btn-light w-100 py-3 text-muted border" disabled>
+                            {{ slot }} (마감)
+                        </button>
+                    {% else %}
+                        <button type="button" class="btn btn-outline-primary w-100 py-3 fw-semibold" onclick="selectTime('{{ slot }}')">
+                            {{ slot }}
+                        </button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="step3" class="step-page">
+        <h3 class="fw-bold mb-4">예약자 정보를<br>입력해 주세요</h3>
+        
+        <div class="mb-3">
+            <label class="form-label fw-semibold">이름 [cite: 51]</label>
+            <input type="text" class="form-control form-control-lg" name="name" placeholder="홍길동" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">성별 [cite: 51]</label>
+            <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="gender" id="genderM" value="M" checked>
+                <label class="btn btn-outline-secondary w-100 py-2" for="genderM">남성</label>
+                <input type="radio" class="btn-check" name="gender" id="genderF" value="F">
+                <label class="btn btn-outline-secondary w-100 py-2" for="genderF">여성</label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">전화번호 [cite: 51]</label>
+            <input type="tel" class="form-control form-control-lg" name="phone_number" placeholder="010-1234-5678" required>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-semibold">방문자 유형</label>
+            <div class="row g-2">
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="user_type" id="type1" value="interior" checked>
+                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type1">인테리어 업체</label>
+                </div>
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="user_type" id="type2" value="owner">
+                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type2">건축주</label>
+                </div>
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="user_type" id="type3" value="student">
+                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type3">학생</label>
+                </div>
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="user_type" id="type4" value="etc">
+                    <label class="btn btn-outline-secondary w-100 py-2 small" for="type4">기타</label>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3">확인 및 다음</button>
+    </div>
+</form>
+
+<script>
+    function nextStep(stepNum) {
+        document.querySelectorAll('.step-page').forEach(page => page.classList.remove('active'));
+        document.getElementById('step' + stepNum).classList.add('active');
+    }
+
+    function selectTime(timeStr) {
+        document.getElementById('selected_time').value = timeStr;
+        nextStep(3);
+    }
+
+    // [기능 추가] 전화번호 입력 시 자동으로 '-' 대시 기호 생성 로직
+    const phoneInput = document.querySelector('input[name="phone_number"]');
+    phoneInput.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/[^0-9]/g, ''); // 숫자만 남기기
+        if (val.length > 3 && val.length <= 7) {
+            e.target.value = val.substring(0, 3) + '-' + val.substring(3);
+        } else if (val.length > 7) {
+            e.target.value = val.substring(0, 3) + '-' + val.substring(3, 7) + '-' + val.substring(7, 11);
+        }
+    });
+
+    // 무인 태블릿 리셋 타임아웃 60초
+    let idleTime = 0;
+    setInterval(() => {
+        idleTime++;
+        if (idleTime >= 60) { // 60초 경과 시 작동
+            nextStep(1);
+            document.getElementById('reservationForm').reset();
+            idleTime = 0;
+        }
+    }, 1000);
+    document.onclick = () => idleTime = 0; // 화면 터치 감지 시 타이머 초기화
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COEX VR 체험 예약</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #ffffff;
+            color: #ffffff;
+            user-select: none;
+        }
+        .app-container {
+            max-width: 500px;
+            min-height: 100vh;
+            margin: 0 auto;
+            background: #ffffff; /* 본문 영역은 깔끔한 순백색 */
+            box-shadow: 0 0 30px rgba(0,0,0,0.08);
+        }
+        /* 장고 포인트 컬러: 신뢰감을 주는 파란색 계열 커스텀 */
+        .btn-primary {
+            background-color: #0052cc !important;
+            border-color: #0052cc !important;
+        }
+        .btn-primary:hover, .btn-primary:active {
+            background-color: #0041a3 !important;
+            border-color: #0041a3 !important;
+        }
+        .btn-outline-primary {
+            color: #0052cc !important;
+            border-color: #0052cc !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: #0052cc !important;
+            color: #ffffff !important;
+        }
+        .text-primary {
+            color: #0052cc !important;
+        }
+        .progress-bar {
+            background-color: #0052cc !important;
+        }
+        .step-page { display: none; }
+        .step-page.active { display: flex; flex-direction: column; min-height: 100vh; justify-content: center; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        {% block content %}
+        {% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

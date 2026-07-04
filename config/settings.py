@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-20)eo)br0o#djiv%vt3np(k@_0x%jrtkh7!i7-b(g&sk$w2@zs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'reservation',  # 내 예약 앱 추가
 ]
 
 MIDDLEWARE = [

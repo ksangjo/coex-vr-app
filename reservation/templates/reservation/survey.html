@@ -1,0 +1,118 @@
+{% extends 'reservation/base.html' %}
+{% load static %} 
+
+{% block content %}
+<div class="p-4 d-flex flex-column min-vh-100 justify-content-center">
+
+    <div id="surveySection">
+        <div class="alert alert-success text-center fw-bold rounded-3 mb-4 py-3">
+            🎉 예약이 완료되었습니다!
+        </div>
+        <h4 class="text-center fw-bold mb-4">당신이 관심 있는 공간을 선택하세요</h4>
+        
+        <div class="progress mb-4" style="height: 6px;">
+            <div id="gameProgress" class="progress-bar bg-primary" style="width: 33%"></div>
+        </div>
+
+        <div class="survey-card-group" id="q1">
+            <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q1', '가족 주택')">
+                <img src="{% static 'reservation/images/house.jpg' %}" class="card-img-top" alt="가족 주택">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">👨‍👩‍👧‍👦 가족이 같이 사는 따뜻한 주택</h5></div>
+            </div>
+            <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q1', '상업 건물')">
+                <img src="{% static 'reservation/images/shop.jpg' %}" class="card-img-top" alt="상업 건물">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🏢 깔끔하고 효율적인 상업 건물</h5></div>
+            </div>
+        </div>
+
+        <div class="survey-card-group d-none" id="q2">
+            <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q2', '대리석 마감')">
+                <img src="{% static 'reservation/images/marble.jpg' %}" class="card-img-top" alt="대리석 마감">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">✨ 세련된 대리석 마감</h5></div>
+            </div>
+            <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q2', '목재 마감')">
+                <img src="{% static 'reservation/images/wood.jpg' %}" class="card-img-top" alt="목재 마감">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🪵 따뜻한 목재 마감</h5></div>
+            </div>
+        </div>
+
+        <div class="survey-card-group d-none" id="q3">
+            <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard('q3', '효율적 동선')">
+                <img src="{% static 'reservation/images/layout.jpg' %}" class="card-img-top" alt="효율적 동선">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🔄 동선이 효율적인 공간</h5></div>
+            </div>
+            <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard('q3', '높은 층고')">
+                <img src="{% static 'reservation/images/high.jpg' %}" class="card-img-top" alt="높은 층고">
+                <div class="card-body text-center py-3"><h5 class="fw-bold m-0">🚀 층고가 높은 공간</h5></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="finalSection" class="d-none text-center py-2">
+        <div class="mb-3 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h4 class="fw-bold mb-3">취향 분석 완료!</h4>
+        
+        <div class="card overflow-hidden shadow mb-4 border-0">
+            <img src="{% static 'reservation/images/final_view.jpg' %}" class="card-img-top" alt="공간감 확인" style="height: 200px; object-fit: cover;">
+            <div class="card-body text-start p-4 bg-light">
+                <h5 class="fw-bold text-dark mb-3">높이나 공간감을 모니터로만 확인하나요?<br>도면과 몇 컷의 그림으로만 결정하셨나요?</h5>
+                <p class="text-secondary small m-0 card-text" style="line-height: 1.6;">
+                    어떤 공간이든지 저희 VR 서비스를 통해 실제 크기와 지어질 모습을 생생하게 미리 경험해보실 수 있습니다.<br><br>
+                    정면에 보이는 부스 안내원에게 이름을 말씀하시고 바로 입장해 주세요!
+                </p>
+            </div>
+        </div>
+
+        <form action="{% url 'submit_taste' %}" method="POST">
+            {% csrf_token %}
+            <input type="hidden" id="taste_results_input" name="taste_results">
+            <button type="submit" class="btn btn-dark btn-lg w-100 py-3 rounded-pill fw-bold shadow">처음 화면으로 돌아가기</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let choices = [];
+
+    function chooseCard(currentId, value) {
+        choices.push(value);
+        
+        if (currentId === 'q1') {
+            document.getElementById('q1').classList.add('d-none');
+            document.getElementById('q2').classList.remove('d-none');
+            document.getElementById('gameProgress').style.width = "66%";
+        } else if (currentId === 'q2') {
+            document.getElementById('q2').classList.add('d-none');
+            document.getElementById('q3').classList.remove('d-none');
+            document.getElementById('gameProgress').style.width = "100%";
+        } else if (currentId === 'q3') {
+            document.getElementById('surveySection').classList.add('d-none');
+            document.getElementById('finalSection').classList.remove('d-none');
+            
+            // 데이터베이스에 최종 저장될 텍스트 포맷팅 ("가족 주택, 대리석 마감, 높은 층고")
+            document.getElementById('taste_results_input').value = choices.join(', ');
+        }
+    }
+</script>
+
+<style>
+    /* 이미지 카드 전용 고정 비율 및 터치 스타일링 */
+    .card-img-top {
+        height: 160px;
+        object-fit: cover; /* 이미지가 찌그러지지 않고 예쁘게 크롭되도록 설정 */
+    }
+    .card {
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .card:active {
+        transform: scale(0.97);
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 12px rgba(13, 110, 253, 0.2) !important;
+    }
+</style>
+{% endblock %}
