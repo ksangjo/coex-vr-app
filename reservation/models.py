@@ -27,5 +27,8 @@ class Reservation(models.Model):
     # 5. 신청 일시 (데이터가 들어오는 실시간 시각 자동 저장)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="신청 일시")
 
+    # 6. 예약 10분 전 안내 문자 발송 여부 (중복 발송 방지용)
+    reminder_sent = models.BooleanField(default=False, verbose_name="안내문자 발송완료")
+
     def __str__(self):
         return f"{self.name} - {self.reservation_datetime.strftime('%m/%d %H:%M')}"

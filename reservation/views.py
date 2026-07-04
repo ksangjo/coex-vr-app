@@ -1,6 +1,10 @@
 from django.shortcuts import render, redirect
 from django.utils import timezone
+from django.conf import settings
+from django.http import JsonResponse, HttpResponseForbidden
+from django.views.decorators.csrf import csrf_exempt
 from .models import Reservation
+from .reminders import send_due_reminders
 from datetime import datetime
 
 def main_page(request):
@@ -93,3 +97,20 @@ def submit_taste(request):
             
     # redirect 할 때 url 패턴명('main_page')을 정확히 선언하여 오류 원천 차단
     return redirect('main_page')
+
+
+@csrf_exempt
+def send_reminders_cron(request):
+    """
+    외부 크론(cron-job.org 등)이 주기적으로 호출하는 안내 문자 발송 엔드포인트.
+
+    Render 무료 플랜은 트래픽이 없으면 슬립되어 내부 스케줄러가 멈추므로,
+    외부에서 이 주소를 1분마다 호출해 (1) 앱을 깨우고 (2) 발송을 실행한다.
+    ?token=... 값이 settings.CRON_SECRET_TOKEN 과 일치할 때만 동작한다.
+    """
+    token = request.GET.get('token', '')
+    if not settings.CRON_SECRET_TOKEN or token != settings.CRON_SECRET_TOKEN:
+        return HttpResponseForbidden('invalid token')
+
+    sent = send_due_reminders()
+    return JsonResponse({'ok': True, 'sent': sent})

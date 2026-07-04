@@ -5,3 +5,5 @@ packaging==26.2
 sqlparse==0.5.5
 tzdata==2026.2
 whitenoise==6.9.0
+apscheduler==3.11.3
+requests==2.34.2

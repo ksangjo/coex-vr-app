@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -109,7 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -136,3 +137,26 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
+
+
+# =========================================================================
+# 예약 10분 전 안내 문자(SMS) 기능 설정
+# =========================================================================
+
+# 스케줄러 자동 시작 여부. 배포(Render)에서는 켜고, 로컬에서 끄고 싶으면
+# 환경변수 SCHEDULER_AUTOSTART=False 로 두면 된다. 기본값은 켜짐(True).
+SCHEDULER_AUTOSTART = os.environ.get('SCHEDULER_AUTOSTART', 'True') == 'True'
+
+# --- 알리고(Aligo) 문자 API 인증정보 ---
+# 보안을 위해 코드에 직접 쓰지 않고 Render 대시보드의 Environment(환경변수)에 넣는다.
+# 로컬 테스트 시에는 값이 비어 있어도 앱은 정상 동작하며, 발송만 실패한다.
+ALIGO_API_KEY = os.environ.get('ALIGO_API_KEY', '')   # 알리고 API Key
+ALIGO_USER_ID = os.environ.get('ALIGO_USER_ID', '')   # 알리고 로그인 아이디
+ALIGO_SENDER = os.environ.get('ALIGO_SENDER', '')     # 사전 등록한 발신번호(내 번호)
+
+# 실제 발송/과금 없이 연동만 점검하려면 환경변수 ALIGO_TEST_MODE=True 로 설정.
+ALIGO_TEST_MODE = os.environ.get('ALIGO_TEST_MODE', 'False') == 'True'
+
+# 외부 크론(cron-job.org 등)이 안내 문자 엔드포인트를 호출할 때 쓰는 비밀 토큰.
+# 아무나 호출하지 못하도록 막는 용도. 환경변수로 임의의 긴 문자열을 넣어두면 된다.
+CRON_SECRET_TOKEN = os.environ.get('CRON_SECRET_TOKEN', '')
