@@ -43,6 +43,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise: gunicorn 환경에서도 정적 파일(admin CSS 등)을 직접 서빙.
+    # 반드시 SecurityMiddleware 바로 다음에 위치해야 함.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -117,5 +120,19 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-import os
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# collectstatic이 모든 정적 파일(admin CSS 포함)을 모아둘 폴더.
+# 배포 시 `python manage.py collectstatic` 실행 결과가 여기에 쌓이고,
+# WhiteNoise가 이 폴더를 gunicorn에서 직접 서빙한다.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise 압축 서빙(gzip/brotli). Manifest 방식은 아직 존재하지 않는
+# 이미지 파일을 {% static %}으로 참조할 때 오류가 나므로 사용하지 않는다.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}

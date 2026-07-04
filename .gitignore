@@ -1,1 +1,8 @@
 venv/
+
+# collectstatic 결과물 (배포 시 build command에서 자동 생성됨)
+staticfiles/
+
+# Python 캐시
+__pycache__/
+*.pyc
