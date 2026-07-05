@@ -20,34 +20,64 @@
             background: #ffffff;     /* 배경과 동일한 순백색으로 이어져 보이게 */
             /* box-shadow 제거: 앱 영역과 배경이 분리되어 보이지 않도록 전체 흰색으로 통일 */
         }
-        /* 장고 포인트 컬러: 신뢰감을 주는 파란색 계열 커스텀 */
+        /* 포인트 컬러: 가벼운 인디고 블루 (#4f6ef7) */
+
+        /* 확인 버튼 등 주요 액션: 파란색으로 꽉 채우고 글자는 흰색 */
         .btn-primary {
-            background-color: #0052cc !important;
-            border-color: #0052cc !important;
+            background-color: #4f6ef7 !important;
+            border-color: #4f6ef7 !important;
+            color: #ffffff !important;
         }
         .btn-primary:hover, .btn-primary:active {
-            background-color: #0052cc !important;
-            border-color: #0052cc !important;
+            background-color: #3d5ce0 !important;
+            border-color: #3d5ce0 !important;
         }
+
+        /* 선택형(성별/방문자 유형) 미선택: 회색 테두리 + 검정 글자 */
         .btn-outline-primary {
-            color: #0052cc !important;
-            border-color: #0052cc !important;
+            color: #212529 !important;
+            border-color: #ced4da !important;
+            background-color: #ffffff !important;
         }
+        /* 선택된 시간 슬롯 한 개만 하늘색 채움 (기본은 흰색) */
+        .slot-btn.slot-selected:not(:disabled) {
+            background-color: #e8f0ff !important;
+            border-color: #4f6ef7 !important;
+            color: #4f6ef7 !important;
+            font-weight: 600;
+        }
+        /* 마우스 오버(터치) 시: 검정 글자 유지, 옅은 회색 배경 */
         .btn-outline-primary:hover {
-            background-color: #0052cc !important;
-            color: #ffffff !important;
+            background-color: #f1f3f5 !important;
+            color: #212529 !important;
+            border-color: #ced4da !important;
         }
-        /* 라디오(성별/방문자 유형) 선택 시: 파란색으로 채우고 글자는 흰색 */
+        /* 라디오(성별/방문자 유형) 선택 시: 하늘색 채움 + 파란 테두리 + 검정 글자 */
         .btn-check:checked + .btn-outline-primary {
-            background-color: #0052cc !important;
-            border-color: #0052cc !important;
-            color: #ffffff !important;
+            background-color: #e8f0ff !important;
+            border-color: #4f6ef7 !important;
+            color: #212529 !important;
+            font-weight: 600;
+        }
+
+        /* 시간 슬롯 버튼: 작고 균일하게, 한 줄 유지 */
+        .slot-btn {
+            font-size: 0.8rem;
+            white-space: nowrap;
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        /* 예약 가능한 시간 버튼: 흰 배경 + 검정 글자 + 옅은 테두리 */
+        .slot-btn:not(:disabled) {
+            background-color: #ffffff !important;
+            color: #212529 !important;
+            border: 1px solid #ced4da !important;
         }
         .text-primary {
-            color: #0052cc !important;
+            color: #4f6ef7 !important;
         }
         .progress-bar {
-            background-color: #0052cc !important;
+            background-color: #4f6ef7 !important;
         }
         .step-page { display: none; }
         .step-page.active { display: flex; flex-direction: column; min-height: 100vh; justify-content: center; padding: 30px; }

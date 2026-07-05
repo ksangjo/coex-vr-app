@@ -7,29 +7,29 @@
 
     <div id="step1" class="step-page active text-center bg-white text-black justify-content-between py-5">
         <div class="my-auto">
-            <h1 class="display-5 fw-bold mb-4">짓기 전에<br>들어가보세요.</h1>
-            <p class="lead text-secondary">igloo-vr</p>
+            <h1 class="display-6 fw-bold mb-4">짓기 전에<br>들어가보세요.</h1>
+            <p class="fw-bold text-secondary mb-0" style="font-size: 1.6rem;">Igloo vr</p>
         </div>
         <div class="px-3 w-100">
-            <button type="button" class="btn btn-light btn-lg w-100 py-3 fw-bold rounded-pill shadow-sm animate-pulse" onclick="nextStep(2)">
+            <button type="button" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm animate-pulse" onclick="nextStep(2)">
                 화면을 터치하여 예약하기
             </button>
         </div>
     </div>
 
     <div id="step2" class="step-page">
-        <h3 class="fw-bold mb-4">원하시는 체험 시간을<br>선택해 주세요</h3>
-        <p class="text-muted small mb-3">오늘(8/{{ display_day }}) 예약 타임슬롯</p>
-        
-        <div class="row g-2 overflow-y-auto" style="max-height: 65vh;">
+        <h3 class="fw-bold mb-3">원하시는 체험 시간을<br>선택해 주세요</h3>
+        <p class="text-muted small mb-4">오늘(8/{{ display_day }}) 예약 타임슬롯</p>
+
+        <div class="row g-3 mx-auto" style="max-width: 560px;">
             {% for slot in all_slots %}
                 <div class="col-3">
                     {% if slot.disabled %}
-                        <button type="button" class="btn btn-light w-100 py-3 text-muted border small" disabled>
-                            {{ slot.label }} (마감)
+                        <button type="button" class="btn btn-light py-2 text-muted border w-100 slot-btn" disabled>
+                            {{ slot.label }}
                         </button>
                     {% else %}
-                        <button type="button" class="btn btn-outline-primary w-100 py-3 fw-semibold small" onclick="selectTime('{{ slot.start }}')">
+                        <button type="button" class="btn py-2 fw-semibold w-100 slot-btn" onclick="selectTime('{{ slot.start }}', this)">
                             {{ slot.label }}
                         </button>
                     {% endif %}
@@ -79,16 +79,61 @@
     </div>
 </form>
 
+    <!-- 예약 시간 확인 팝업 -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <p class="fs-4 fw-bold text-primary mb-1" id="confirmTime"></p>
+                    <p class="text-secondary mb-4">예약 시간이 맞으신가요?</p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary w-100 py-2 fw-semibold" id="confirmYes">확인</button>
+                        <button type="button" class="btn btn-outline-secondary w-100 py-2 fw-semibold" id="confirmNo">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
     function nextStep(stepNum) {
         document.querySelectorAll('.step-page').forEach(page => page.classList.remove('active'));
         document.getElementById('step' + stepNum).classList.add('active');
     }
 
-    function selectTime(timeStr) {
-        document.getElementById('selected_time').value = timeStr;
-        nextStep(3);
+    let pendingTime = null;   // 팝업에서 '확인' 누르면 확정될 시작 시간
+    let pendingEl = null;     // 선택한 슬롯 버튼(취소 시 표시 해제용)
+
+    // Bootstrap 번들이 페이지 하단에서 로드되므로, 모달은 클릭 시점에 생성한다.
+    function getConfirmModal() {
+        return bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
     }
+
+    function selectTime(timeStr, el) {
+        pendingTime = timeStr;
+        pendingEl = el;
+        // 이전 선택 해제 후 클릭한 슬롯 한 개만 하늘색으로 표시
+        document.querySelectorAll('#step2 .slot-btn').forEach(b => b.classList.remove('slot-selected'));
+        if (el) el.classList.add('slot-selected');
+        // 확인 팝업에 'hh:mm~hh:mm' 표시 후 띄우기
+        document.getElementById('confirmTime').textContent = el ? el.textContent.trim() : timeStr;
+        getConfirmModal().show();
+    }
+
+    // 확인: 시간 확정 후 다음 페이지로 이동
+    document.getElementById('confirmYes').addEventListener('click', () => {
+        document.getElementById('selected_time').value = pendingTime;
+        getConfirmModal().hide();
+        nextStep(3);
+    });
+
+    // 취소: 팝업 닫고 선택 해제하여 다시 고르게 함
+    document.getElementById('confirmNo').addEventListener('click', () => {
+        getConfirmModal().hide();
+        if (pendingEl) pendingEl.classList.remove('slot-selected');
+        pendingTime = null;
+        pendingEl = null;
+    });
 
     // [기능 추가] 전화번호 입력 시 자동으로 '-' 대시 기호 생성 로직
     const phoneInput = document.querySelector('input[name="phone_number"]');
