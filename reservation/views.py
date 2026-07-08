@@ -1,39 +1,67 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.utils import timezone
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse, HttpResponseForbidden
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from .models import Reservation
 from .reminders import send_due_reminders
 from datetime import datetime
 
+
+# 페어 운영 기간(2026-08-05 ~ 08-08). 이 기간 안에서만 "지나간 시간" 슬롯을 마감한다.
+def _is_fair_now(now):
+    return now.year == 2026 and now.month == 8 and 5 <= now.day <= 8
+
+
+@never_cache
 def main_page(request):
-    """1~4단계: 현재 시간 이후의 타임슬롯 목록을 생성하여 화면에 전달"""
+    """
+    대기 → 시간선택 → 예약자정보 → 설문(3단계) → 완료까지 모든 화면을 한 URL('/')에서
+    처리하는 SPA(단일 페이지) 진입점.
+
+    - GET  : 타임슬롯을 계산해 페이지를 렌더링한다.
+    - POST : action 값에 따라 아래 3가지 비동기 작업을 처리한다.
+        * create_reservation : '확인 및 다음' 시점에 예약 레코드 생성 (취향은 빈 값)
+        * save_survey        : Survey 3단계 카드 클릭 순간 취향 결과를 update
+        * reset              : '홈으로 돌아가기' 시 세션의 이전 유저 흔적 제거
+
+    @never_cache 로 브라우저 뒤로가기(bfcache) 시 이전 유저 화면이 되살아나지 않게 막는다.
+    """
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create_reservation':
+            return _create_reservation(request)
+        if action == 'save_survey':
+            return _save_survey(request)
+        if action == 'reset':
+            # 이전 유저와 예약 레코드를 잇던 연결 고리만 제거 (관리자 로그인 등은 보존)
+            request.session.pop('reservation_id', None)
+            return JsonResponse({'ok': True})
+        return JsonResponse({'ok': False, 'error': '알 수 없는 요청입니다.'}, status=400)
+
+    # ---- GET: 타임슬롯 계산 후 렌더링 ----
     now = timezone.localtime(timezone.now())
     current_time_str = now.strftime("%H:%M")
 
-    # 페어 기간(2026-08-05 ~ 08-08) 안에서 실제 운영 중인지 여부.
-    # 이 기간 안에 있을 때에만 "지나간 시간"을 마감 처리한다.
-    # (페어 기간 밖에서 테스트할 때는 현재 시각과 무관하게 모든 슬롯이 열려 있어야 함)
-    is_fair_now = (now.year == 2026 and now.month == 8 and 5 <= now.day <= 8)
+    is_fair_now = _is_fair_now(now)
     display_day = now.day if is_fair_now else 5
 
-    # 이미 데이터베이스(DB)에 예약 완료된 시간대 목록 가져오기 (표시 날짜 기준)
+    # 이미 예약 완료된 시간대(표시 날짜 기준)를 'HH:MM' 문자열로 확보
     booked_slots = Reservation.objects.filter(
         reservation_datetime__year=2026,
         reservation_datetime__month=8,
-        reservation_datetime__day=display_day
+        reservation_datetime__day=display_day,
     ).values_list('reservation_datetime', flat=True)
-    # 비교하기 편하게 'HH:MM' 문자열 리스트로 변환
     booked_times = [timezone.localtime(dt).strftime("%H:%M") for dt in booked_slots]
 
-    # 15분 단위 전체 타임슬롯 리스트 생성 (10:00 시작 ~ 17:45 시작, 마지막 종료 18:00)
-    # 각 슬롯은 시작/종료/표시라벨/마감여부를 담은 딕셔너리로 전달한다.
+    # 15분 단위 전체 슬롯(10:00 시작 ~ 17:45 시작). 예약됨/지나감이면 마감 처리.
     all_slots = []
     for hour in range(10, 18):
         for minute in [0, 15, 30, 45]:
             start = f"{hour:02d}:{minute:02d}"
-            end_total = hour * 60 + minute + 15  # 종료 시간 = 시작 + 15분
+            end_total = hour * 60 + minute + 15
             end = f"{end_total // 60:02d}:{end_total % 60:02d}"
 
             is_booked = start in booked_times
@@ -45,58 +73,74 @@ def main_page(request):
                 'disabled': is_booked or is_past,
             })
 
-    # 화면 템플릿으로 시간 데이터 송출
     context = {
         'all_slots': all_slots,
         'display_day': display_day,
     }
-    return render(request, 'reservation/main.html', context)
+    return render(request, 'reservation/main_page.html', context)
 
-def survey_page(request):
-    """5단계: 예약 정보를 임시 저장(세션)하고 취향 선택 밸런스 게임 페이지를 보여줌"""
-    if request.method == 'POST':
-        time_str = request.POST.get('reservation_time')
-        name = request.POST.get('name')
-        gender = request.POST.get('gender')
-        phone_number = request.POST.get('phone_number')
-        user_type = request.POST.get('user_type')
 
-        now = timezone.now()
-        current_day = now.day if now.month == 8 and 5 <= now.day <= 8 else 5
-        full_datetime_str = f"2026-08-{current_day:02d} {time_str}"
+def _create_reservation(request):
+    """'확인 및 다음' 시점: 예약 레코드를 생성하고 세션에 id를 담는다.
+    이름+전화번호가 이미 존재하면 IntegrityError 를 잡아 안내 문구로 돌려준다."""
+    time_str = request.POST.get('reservation_time')
+    name = (request.POST.get('name') or '').strip()
+    gender = request.POST.get('gender')
+    phone_number = (request.POST.get('phone_number') or '').strip()
+    user_type = request.POST.get('user_type')
 
-        request.session['temp_reservation'] = {
-            'reservation_datetime': full_datetime_str,
-            'name': name,
-            'gender': gender,
-            'phone_number': phone_number,
-            'user_type': user_type,
-        }
-        return render(request, 'reservation/survey.html')
-    return redirect('main_page')
+    company_name = (request.POST.get('company_name') or '').strip()
+    client_status = (request.POST.get('client_status') or '').strip()
+    other_reason = (request.POST.get('other_reason') or '').strip()
 
-def submit_taste(request):
-    """최종 저장 후 리다이렉트 에러 해결을 위해 명확하게 메인으로 이동시킴"""
-    if request.method == 'POST':
-        taste_results = request.POST.get('taste_results')
-        temp_data = request.session.get('temp_reservation')
+    # 서버측 최소 검증 (프론트 검증이 뚫려도 잘못된 데이터가 저장되지 않도록)
+    if not (time_str and name and gender and phone_number and user_type):
+        return JsonResponse({'ok': False, 'error': '입력 정보가 올바르지 않습니다.'}, status=400)
 
-        if temp_data:
-            res_datetime = datetime.strptime(temp_data['reservation_datetime'], "%Y-%m-%d %H:%M")
-            
-            # DB에 정상 인서트
-            Reservation.objects.create(
+    now = timezone.localtime(timezone.now())
+    current_day = now.day if _is_fair_now(now) else 5
+    full_datetime_str = f"2026-08-{current_day:02d} {time_str}"
+    try:
+        naive = datetime.strptime(full_datetime_str, "%Y-%m-%d %H:%M")
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': '시간 정보가 올바르지 않습니다.'}, status=400)
+    # USE_TZ=True 환경이므로 Asia/Seoul 기준 aware datetime 으로 저장 (안내문자 발송 시각 정확도 확보)
+    res_datetime = timezone.make_aware(naive)
+
+    try:
+        # atomic 세이브포인트로 감싸 IntegrityError 발생 시에도 트랜잭션이 깨지지 않게 함
+        with transaction.atomic():
+            reservation = Reservation.objects.create(
                 reservation_datetime=res_datetime,
-                name=temp_data['name'],
-                gender=temp_data['gender'],
-                phone_number=temp_data['phone_number'],
-                user_type=temp_data['user_type'],
-                taste_results=taste_results
+                name=name,
+                gender=gender,
+                phone_number=phone_number,
+                user_type=user_type,
+                company_name=company_name if user_type == 'interior' else None,
+                client_status=client_status if user_type == 'owner' else None,
+                other_reason=other_reason if user_type == 'etc' else None,
+                taste_results='',
             )
-            del request.session['temp_reservation']
-            
-    # redirect 할 때 url 패턴명('main_page')을 정확히 선언하여 오류 원천 차단
-    return redirect('main_page')
+    except IntegrityError:
+        # 이름+전화번호 유니크 제약 위반 → 에러를 던지지 않고 안내로 전환
+        return JsonResponse({'ok': False, 'error': '이미 예약된 정보입니다.'})
+
+    request.session['reservation_id'] = reservation.id
+    return JsonResponse({'ok': True})
+
+
+def _save_survey(request):
+    """Survey 3단계(마지막 카드) 클릭 순간: 취향 결과를 기존 예약 레코드에 update."""
+    reservation_id = request.session.get('reservation_id')
+    taste_results = (request.POST.get('taste_results') or '').strip()
+
+    if not reservation_id:
+        return JsonResponse({'ok': False, 'error': '예약 세션이 만료되었습니다.'}, status=400)
+
+    updated = Reservation.objects.filter(id=reservation_id).update(taste_results=taste_results)
+    if not updated:
+        return JsonResponse({'ok': False, 'error': '예약을 찾을 수 없습니다.'}, status=404)
+    return JsonResponse({'ok': True})
 
 
 @csrf_exempt

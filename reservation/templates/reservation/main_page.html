@@ -1,0 +1,555 @@
+{% extends 'reservation/base.html' %}
+{% load static %}
+
+{% block content %}
+{% csrf_token %}
+
+<!-- 상단 바: 좌측 커스텀 뒤로가기 / 우측 실시간 시계.
+     showStep()이 단계에 맞춰 바 전체와 시계를 개별적으로 켜고 끈다. -->
+<div id="topBar" class="d-none">
+    <button type="button" id="backBtn" class="btn btn-link text-decoration-none p-0 fw-semibold" onclick="goBack()">
+        &larr; 뒤로
+    </button>
+    <div id="clockBox" class="d-none d-flex align-items-center gap-2">
+        <span class="text-secondary small">현재 시간:</span>
+        <span id="clock" class="fw-bold fs-5"></span>
+    </div>
+</div>
+
+<!-- ===================== STEP 1. 대기 화면 ===================== -->
+<div id="step-welcome" class="step-page active text-center justify-content-between py-5">
+    <div class="my-auto">
+        <h1 class="display-6 fw-bold mb-4">짓기 전에<br>들어가보세요.</h1>
+        <p class="fw-bold text-secondary mb-0" style="font-size: 1.6rem;">Igloo vr</p>
+    </div>
+    <div class="px-3 w-100">
+        <button type="button" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm animate-pulse" onclick="showStep('step-time')">
+            화면을 터치하여 예약하기
+        </button>
+    </div>
+</div>
+
+<!-- ===================== STEP 2. 체험 시간 선택 ===================== -->
+<div id="step-time" class="step-page">
+    <h3 class="fw-bold mb-3 text-start">원하시는 체험 시간을<br>선택해 주세요</h3>
+    <p class="text-muted small mb-4 text-start">오늘(8/{{ display_day }}) 예약 타임슬롯</p>
+
+    <!-- 좌우 꽉 채우는 4열 그리드. 기본 .row 의 음수 거터 마진으로
+         버튼 가장자리가 위 안내 문구(제목) 좌우 가장자리와 정확히 맞도록 정렬 -->
+    <div class="row g-2">
+        {% for slot in all_slots %}
+            <div class="col-3">
+                {% if slot.disabled %}
+                    <button type="button" class="btn btn-light py-2 text-muted border w-100 slot-btn" disabled>
+                        {{ slot.label }}
+                    </button>
+                {% else %}
+                    <button type="button" class="btn py-2 fw-semibold w-100 slot-btn" onclick="selectTime('{{ slot.start }}', this)">
+                        {{ slot.label }}
+                    </button>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ===================== STEP 3. 예약자 정보 입력 ===================== -->
+<div id="step-info" class="step-page">
+    <form id="infoForm" onsubmit="return false;" novalidate>
+        <h3 class="fw-bold mb-4 text-start">예약자 정보를<br>입력해 주세요</h3>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">이름</label>
+            <input type="text" class="form-control form-control-lg" name="name" placeholder="홍길동" required>
+            <div class="invalid-feedback">이름을 입력해주세요.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">성별</label>
+            <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="gender" id="genderM" value="M" checked>
+                <label class="btn btn-outline-primary w-100 py-2" for="genderM">남성</label>
+                <input type="radio" class="btn-check" name="gender" id="genderF" value="F">
+                <label class="btn btn-outline-primary w-100 py-2" for="genderF">여성</label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">전화번호</label>
+            <!-- '010-' 은 항상 고정 노출·삭제 불가, 숫자만 입력 가능 (JS로 강제) -->
+            <input type="tel" inputmode="numeric" maxlength="13" class="form-control form-control-lg"
+                   name="phone_number" value="010-" required>
+            <div class="invalid-feedback">전화번호 11자리를 정확히 입력해 주세요.</div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-semibold">방문자 유형</label>
+            <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="user_type" id="type1" value="interior" checked>
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type1">인테리어 업체</label>
+                <input type="radio" class="btn-check" name="user_type" id="type2" value="owner">
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type2">건축주</label>
+                <input type="radio" class="btn-check" name="user_type" id="type3" value="etc">
+                <label class="btn btn-outline-primary w-100 py-2 px-1 small" for="type3">기타</label>
+            </div>
+        </div>
+
+        <!-- 방문자 유형별 추가 입력: 선택된 유형에 해당하는 블록 하나만 표시 -->
+        <div id="extra-interior" class="mb-4 type-extra">
+            <label class="form-label fw-semibold">업체 이름</label>
+            <input type="text" class="form-control form-control-lg" name="company_name" placeholder="예) 이글루 인테리어">
+            <div class="text-danger small mt-1 d-none extra-warning">업체 이름을 입력해주세요.</div>
+        </div>
+
+        <div id="extra-owner" class="mb-4 type-extra" style="display: none;">
+            <label class="form-label fw-semibold">건축 계획은 어느 단계이신가요?</label>
+            <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="client_status" id="status1" value="시공중">
+                <label class="btn btn-outline-primary w-100 py-2" for="status1">시공중</label>
+                <input type="radio" class="btn-check" name="client_status" id="status2" value="계획중">
+                <label class="btn btn-outline-primary w-100 py-2" for="status2">계획중</label>
+                <input type="radio" class="btn-check" name="client_status" id="status3" value="언젠가는">
+                <label class="btn btn-outline-primary w-100 py-2" for="status3">언젠가는</label>
+            </div>
+            <div class="text-danger small mt-2 d-none extra-warning">건축 계획 단계를 선택해주세요.</div>
+        </div>
+
+        <div id="extra-etc" class="mb-4 type-extra" style="display: none;">
+            <label class="form-label fw-semibold">상세 사유</label>
+            <input type="text" class="form-control form-control-lg" name="other_reason" placeholder="방문 사유를 입력해 주세요">
+            <div class="text-danger small mt-1 d-none extra-warning">상세 사유를 입력해주세요.</div>
+        </div>
+
+        <!-- 이미 예약된 이름+전화번호일 때 서버가 돌려주는 안내 -->
+        <div id="infoServerError" class="alert alert-warning py-2 text-center d-none" role="alert"></div>
+
+        <button type="button" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3" onclick="submitInfo(this)">
+            확인 및 다음
+        </button>
+    </form>
+</div>
+
+<!-- ===================== STEP 4. Survey 1 (0%) ===================== -->
+<div id="step-survey1" class="step-page">
+    <div class="text-center mb-4">
+        <div class="mb-2 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h4 class="fw-bold m-0">예약이 완료되었습니다!</h4>
+    </div>
+    <h4 class="text-center fw-bold mb-4">당신의 공간 취향을<br>좀 더 알고 싶어요</h4>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div id="prog1" class="progress-bar" style="width: 0%"></div>
+    </div>
+
+    <div class="survey-card-group">
+        <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard(1, '가족 주택')">
+            <img src="{% static 'reservation/images/house.jpg' %}" class="card-img-top" alt="가족 주택">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">가족이 같이 사는 따뜻한 주택</h5></div>
+        </div>
+        <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard(1, '상업 건물')">
+            <img src="{% static 'reservation/images/shop.jpg' %}" class="card-img-top" alt="상업 건물">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">깔끔하고 효율적인 상업 건물</h5></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== STEP 5. Survey 2 (1/3) ===================== -->
+<div id="step-survey2" class="step-page">
+    <h4 class="text-center fw-bold mb-4">어떤 마감을<br>더 좋아하세요?</h4>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div id="prog2" class="progress-bar" style="width: 33%"></div>
+    </div>
+
+    <div class="survey-card-group">
+        <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard(2, '대리석 마감')">
+            <img src="{% static 'reservation/images/marble.jpg' %}" class="card-img-top" alt="대리석 마감">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">세련된 대리석 마감</h5></div>
+        </div>
+        <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard(2, '목재 마감')">
+            <img src="{% static 'reservation/images/wood.jpg' %}" class="card-img-top" alt="목재 마감">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">따뜻한 목재 마감</h5></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== STEP 6. Survey 3 (2/3 → 100%) ===================== -->
+<div id="step-survey3" class="step-page">
+    <h4 class="text-center fw-bold mb-4">어떤 공간이<br>더 끌리세요?</h4>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div id="prog3" class="progress-bar" style="width: 66%"></div>
+    </div>
+
+    <div class="survey-card-group">
+        <div class="card mb-3 overflow-hidden border-2 shadow-sm" onclick="chooseCard(3, '효율적 동선')">
+            <img src="{% static 'reservation/images/layout.jpg' %}" class="card-img-top" alt="효율적 동선">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">동선이 효율적인 공간</h5></div>
+        </div>
+        <div class="card overflow-hidden border-2 shadow-sm" onclick="chooseCard(3, '높은 층고')">
+            <img src="{% static 'reservation/images/high.jpg' %}" class="card-img-top" alt="높은 층고">
+            <div class="card-body text-center py-3"><h5 class="fw-bold m-0">층고가 높은 공간</h5></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== STEP 7. 최종 완료 ===================== -->
+<div id="step-final" class="step-page text-center">
+    <div class="mb-3 text-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+        </svg>
+    </div>
+    <h4 class="fw-bold mb-3">취향 분석 완료!</h4>
+
+    <div class="card overflow-hidden shadow mb-4 border-0">
+        <img src="{% static 'reservation/images/final_view.jpg' %}" class="card-img-top" alt="공간감 확인" style="height: 200px; object-fit: cover;">
+        <div class="card-body text-start p-4 bg-light">
+            <h5 class="fw-bold text-dark mb-3">높이나 공간감을 모니터로만 확인하나요?<br>도면과 몇 컷의 그림으로만 결정하셨나요?</h5>
+            <p class="text-secondary small m-0 card-text" style="line-height: 1.6;">
+                어떤 공간이든지 저희 VR 서비스를 통해 실제 크기와 지어질 모습을 생생하게 미리 경험해보실 수 있습니다.<br><br>
+                시작 10분 전에 입력한 전화번호로 문자가 갑니다. 예약한 시간에 맞추어 입장해 주세요!
+            </p>
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-dark btn-lg w-100 py-3 rounded-pill fw-bold shadow" onclick="goHome()">
+        처음 화면으로 돌아가기
+    </button>
+</div>
+
+<!-- 예약 시간 확인 팝업 -->
+<div class="modal fade" id="confirmModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <p class="fs-4 fw-bold text-primary mb-1" id="confirmTime"></p>
+                <p class="text-secondary mb-4">예약 시간이 맞으신가요?</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary w-100 py-2 fw-semibold" id="confirmYes">확인</button>
+                    <button type="button" class="btn btn-outline-secondary w-100 py-2 fw-semibold" id="confirmNo">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 상단 바 (뒤로가기 + 시계) : 앱 폭에 맞춰 상단 고정 */
+    #topBar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        max-width: 820px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 22px;
+        background: #ffffff;
+        z-index: 1050;
+    }
+    #backBtn { color: #4f6ef7; font-size: 1.05rem; }
+    #clock { color: #4f6ef7; letter-spacing: 0.5px; }
+    /* 상단 바가 내용과 겹치지 않도록 활성 단계에 상단 여백 확보 */
+    .step-page.active { padding: 64px 30px 30px; }
+
+    /* 설문 카드 두 장을 좌우로 나란히 */
+    .survey-card-group { display: flex; gap: 1rem; align-items: stretch; }
+    .survey-card-group .card { flex: 1; margin-bottom: 0 !important; }
+    .card-img-top { height: 160px; object-fit: cover; }
+    .card { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+    .card:active {
+        transform: scale(0.97);
+        border-color: #4f6ef7 !important;
+        box-shadow: 0 0 12px rgba(79, 110, 247, 0.25) !important;
+    }
+    /* 프로그레스 바가 부드럽게 차오르도록 */
+    .progress-bar { transition: width 0.6s ease; }
+</style>
+
+<script>
+    // ================= 단계 전환 제어 =================
+    // 단계 순서와, 뒤로가기 버튼 / 시계를 노출할 단계 정의
+    const BACK_STEPS = ['step-time', 'step-info', 'step-survey2', 'step-survey3'];
+    const CLOCK_STEPS = ['step-time'];
+    // 웹 내부 뒤로가기 이동 대상 (survey2/3 는 직전 설문으로 되돌아가며 선택값을 취소)
+    const BACK_TARGET = {
+        'step-time': 'step-welcome',
+        'step-info': 'step-time',
+        'step-survey2': 'step-survey1',
+        'step-survey3': 'step-survey2',
+    };
+
+    let currentStep = 'step-welcome';
+    let selectedTime = null;   // 확인 팝업에서 확정된 시작 시간
+    let choices = [];          // [q1, q2, q3] 취향 선택 결과
+
+    function showStep(stepId) {
+        document.querySelectorAll('.step-page').forEach(p => p.classList.remove('active'));
+        document.getElementById(stepId).classList.add('active');
+        currentStep = stepId;
+
+        // 상단 바 / 뒤로가기 / 시계 노출 갱신
+        const topBar = document.getElementById('topBar');
+        const showBack = BACK_STEPS.includes(stepId);
+        const showClock = CLOCK_STEPS.includes(stepId);
+        topBar.classList.toggle('d-none', !(showBack || showClock));
+        document.getElementById('backBtn').classList.toggle('d-none', !showBack);
+        document.getElementById('clockBox').classList.toggle('d-none', !showClock);
+
+        window.scrollTo(0, 0);
+    }
+
+    function goBack() {
+        const target = BACK_TARGET[currentStep];
+        if (!target) return;
+        // 설문 단계에서 뒤로 가면 직전에 고른 선택값을 취소한다
+        if (currentStep === 'step-survey2') choices[0] = undefined;
+        if (currentStep === 'step-survey3') choices[1] = undefined;
+        showStep(target);
+    }
+
+    // ================= 실시간 시계 (시:분) =================
+    function tickClock() {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('clock').textContent = hh + ':' + mm;
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ================= 공통 POST(fetch) 헬퍼 =================
+    function getCsrf() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+    async function postAction(data) {
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCsrf());
+        Object.entries(data).forEach(([k, v]) => fd.append(k, v));
+        const res = await fetch('', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrf() },
+            body: fd,
+        });
+        return res.json();
+    }
+
+    // ================= STEP 2. 시간 선택 =================
+    let pendingTime = null, pendingEl = null;
+
+    function getConfirmModal() {
+        return bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+    }
+    function selectTime(timeStr, el) {
+        pendingTime = timeStr;
+        pendingEl = el;
+        document.querySelectorAll('#step-time .slot-btn').forEach(b => b.classList.remove('slot-selected'));
+        if (el) el.classList.add('slot-selected');
+        document.getElementById('confirmTime').textContent = el ? el.textContent.trim() : timeStr;
+        getConfirmModal().show();
+    }
+    document.getElementById('confirmYes').addEventListener('click', () => {
+        selectedTime = pendingTime;
+        getConfirmModal().hide();
+        showStep('step-info');
+    });
+    document.getElementById('confirmNo').addEventListener('click', () => {
+        getConfirmModal().hide();
+        if (pendingEl) pendingEl.classList.remove('slot-selected');
+        pendingTime = null;
+        pendingEl = null;
+    });
+
+    // ================= STEP 3. 전화번호 강제 포맷 =================
+    // '010-' 는 항상 고정, 숫자만 입력 가능, 다른 문자는 아예 입력되지 않음.
+    const PHONE_PREFIX = '010-';
+    const phoneInput = document.querySelector('input[name="phone_number"]');
+
+    // 숫자가 아닌 문자 삽입 자체를 차단
+    phoneInput.addEventListener('beforeinput', (e) => {
+        if (e.inputType && e.inputType.startsWith('insert') && e.data && /\D/.test(e.data)) {
+            e.preventDefault();
+        }
+    });
+    // 입력될 때마다 '010-XXXX-XXXX' 형태로 재구성 (prefix 훼손 시 자동 복구)
+    phoneInput.addEventListener('input', () => {
+        let digits = phoneInput.value.replace(/\D/g, '');
+        let sub = digits.startsWith('010') ? digits.slice(3) : '';  // 가입자 번호(최대 8자리)
+        sub = sub.slice(0, 8);
+        let out = PHONE_PREFIX + sub.slice(0, 4);
+        if (sub.length > 4) out += '-' + sub.slice(4);
+        phoneInput.value = out;
+        phoneInput.classList.remove('is-invalid');
+    });
+    // 커서가 prefix 안으로 들어가 지워지는 것을 방지 (항상 끝으로)
+    phoneInput.addEventListener('focus', () => {
+        requestAnimationFrame(() => {
+            const end = phoneInput.value.length;
+            phoneInput.setSelectionRange(end, end);
+        });
+    });
+
+    // ================= STEP 3. 방문자 유형별 추가 입력 토글 =================
+    const extraBlocks = {
+        interior: document.getElementById('extra-interior'),
+        owner: document.getElementById('extra-owner'),
+        etc: document.getElementById('extra-etc'),
+    };
+    function updateVisitorTypeFields() {
+        const selected = document.querySelector('input[name="user_type"]:checked').value;
+        Object.keys(extraBlocks).forEach(type => {
+            const block = extraBlocks[type];
+            const show = (type === selected);
+            block.style.display = show ? '' : 'none';
+            block.querySelectorAll('input').forEach(inp => {
+                if (show) {
+                    inp.setAttribute('required', 'required');
+                } else {
+                    inp.removeAttribute('required');
+                    if (inp.type === 'radio') inp.checked = false;
+                    else inp.value = '';
+                }
+            });
+            block.querySelectorAll('.extra-warning').forEach(w => w.classList.add('d-none'));
+            block.querySelectorAll('input').forEach(inp => inp.classList.remove('is-invalid'));
+        });
+    }
+    document.querySelectorAll('input[name="user_type"]').forEach(r =>
+        r.addEventListener('change', updateVisitorTypeFields)
+    );
+    updateVisitorTypeFields();
+
+    // 다시 입력/선택하면 경고 표시 즉시 해제
+    Object.values(extraBlocks).forEach(block => {
+        block.querySelectorAll('input').forEach(inp => {
+            const clear = () => {
+                inp.classList.remove('is-invalid');
+                block.querySelectorAll('.extra-warning').forEach(w => w.classList.add('d-none'));
+            };
+            inp.addEventListener('input', clear);
+            inp.addEventListener('change', clear);
+        });
+    });
+    document.querySelector('input[name="name"]').addEventListener('input', (e) =>
+        e.target.classList.remove('is-invalid')
+    );
+
+    // ================= STEP 3. 검증 + 예약 생성(AJAX) =================
+    function validateInfo() {
+        let valid = true;
+
+        const nameInput = document.querySelector('input[name="name"]');
+        const nameOk = nameInput.value.trim() !== '';
+        nameInput.classList.toggle('is-invalid', !nameOk);
+        if (!nameOk) valid = false;
+
+        const digits = phoneInput.value.replace(/\D/g, '');
+        if (digits.length !== 11) {
+            phoneInput.classList.add('is-invalid');
+            valid = false;
+        }
+
+        const selected = document.querySelector('input[name="user_type"]:checked').value;
+        const block = extraBlocks[selected];
+        const warning = block.querySelector('.extra-warning');
+        let filled;
+        if (selected === 'owner') {
+            filled = !!block.querySelector('input[name="client_status"]:checked');
+        } else {
+            filled = block.querySelector('input').value.trim() !== '';
+            block.querySelector('input').classList.toggle('is-invalid', !filled);
+        }
+        if (!filled) {
+            if (warning) warning.classList.remove('d-none');
+            valid = false;
+        }
+        return valid;
+    }
+
+    async function submitInfo(btn) {
+        const errBox = document.getElementById('infoServerError');
+        errBox.classList.add('d-none');
+        if (!validateInfo()) return;
+        if (!selectedTime) { showStep('step-time'); return; }
+
+        const form = document.getElementById('infoForm');
+        btn.disabled = true;
+        try {
+            const result = await postAction({
+                action: 'create_reservation',
+                reservation_time: selectedTime,
+                name: form.name.value.trim(),
+                gender: document.querySelector('input[name="gender"]:checked').value,
+                phone_number: phoneInput.value,
+                user_type: document.querySelector('input[name="user_type"]:checked').value,
+                company_name: (form.company_name ? form.company_name.value : '') || '',
+                client_status: (document.querySelector('input[name="client_status"]:checked') || {}).value || '',
+                other_reason: (form.other_reason ? form.other_reason.value : '') || '',
+            });
+            if (result.ok) {
+                choices = [];
+                showStep('step-survey1');
+            } else {
+                errBox.textContent = result.error || '예약에 실패했습니다. 다시 시도해 주세요.';
+                errBox.classList.remove('d-none');
+            }
+        } catch (e) {
+            errBox.textContent = '네트워크 오류가 발생했습니다. 다시 시도해 주세요.';
+            errBox.classList.remove('d-none');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // ================= STEP 4~6. 설문(밸런스 게임) =================
+    function chooseCard(step, value) {
+        if (step === 1) {
+            choices[0] = value;
+            showStep('step-survey2');
+        } else if (step === 2) {
+            choices[1] = value;
+            showStep('step-survey3');
+        } else if (step === 3) {
+            choices[2] = value;
+            finishSurvey();
+        }
+    }
+
+    // Survey 3단계 카드 클릭 순간 → (1) 취향을 DB에 즉시 저장
+    // (2) 프로그레스 100% 애니메이션 → (3) 애니메이션 후 최종 완료로 전환
+    function finishSurvey() {
+        postAction({ action: 'save_survey', taste_results: choices.join(', ') }).catch(() => {});
+        document.getElementById('prog3').style.width = '100%';
+        setTimeout(() => showStep('step-final'), 700);   // 0.6s 애니메이션 후 전환
+    }
+
+    // ================= 홈으로 돌아가기 (세션·데이터 완전 초기화) =================
+    async function goHome() {
+        try { await postAction({ action: 'reset' }); } catch (e) {}
+        // 페이지를 새로 불러와 폼 값·JS 상태·타임슬롯까지 완전히 초기 상태로 리셋
+        window.location.reload();
+    }
+
+    // 브라우저 자체 '뒤로가기'로 캐시(bfcache) 복원 시에도 강제 새로고침
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) window.location.reload();
+    });
+
+    // ================= 무인 키오스크 유휴 리셋 (120초) =================
+    let idleTime = 0;
+    setInterval(() => {
+        idleTime++;
+        if (idleTime >= 120) {
+            idleTime = 0;
+            // 대기 화면이 아닐 때만 초기화 (대기 화면에서 무한 새로고침 방지)
+            if (currentStep !== 'step-welcome') goHome();
+        }
+    }, 1000);
+    document.addEventListener('click', () => { idleTime = 0; });
+</script>
+{% endblock %}

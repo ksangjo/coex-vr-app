@@ -7,3 +7,4 @@ tzdata==2026.2
 whitenoise==6.9.0
 apscheduler==3.11.3
 requests==2.34.2
+python-dotenv==1.2.2

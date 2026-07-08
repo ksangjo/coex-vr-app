@@ -13,18 +13,29 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 프로젝트 루트의 .env 파일을 읽어 os.environ 에 로드한다.
+# (.env 는 .gitignore 에 등록되어 있어 민감정보가 저장소에 올라가지 않는다.
+#  배포 환경(Render 등)에서는 .env 없이 대시보드 환경변수를 그대로 사용한다.)
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-20)eo)br0o#djiv%vt3np(k@_0x%jrtkh7!i7-b(g&sk$w2@zs'
+# 운영 환경에서는 .env(또는 대시보드 환경변수)의 DJANGO_SECRET_KEY 를 반드시 설정한다.
+# .env 에 키가 비어 있어도(빈 문자열) 개발용 기본키로 안전하게 폴백되도록 'or' 사용
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or \
+    'django-insecure-20)eo)br0o#djiv%vt3np(k@_0x%jrtkh7!i7-b(g&sk$w2@zs'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# 배포 시에는 .env 에 DJANGO_DEBUG=False 로 설정한다.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -147,15 +158,17 @@ STORAGES = {
 # 환경변수 SCHEDULER_AUTOSTART=False 로 두면 된다. 기본값은 켜짐(True).
 SCHEDULER_AUTOSTART = os.environ.get('SCHEDULER_AUTOSTART', 'True') == 'True'
 
-# --- 알리고(Aligo) 문자 API 인증정보 ---
+# --- SOLAPI 문자 API 인증정보 ---
 # 보안을 위해 코드에 직접 쓰지 않고 Render 대시보드의 Environment(환경변수)에 넣는다.
 # 로컬 테스트 시에는 값이 비어 있어도 앱은 정상 동작하며, 발송만 실패한다.
-ALIGO_API_KEY = os.environ.get('ALIGO_API_KEY', '')   # 알리고 API Key
-ALIGO_USER_ID = os.environ.get('ALIGO_USER_ID', '')   # 알리고 로그인 아이디
-ALIGO_SENDER = os.environ.get('ALIGO_SENDER', '')     # 사전 등록한 발신번호(내 번호)
+# 값은 SOLAPI 콘솔 > 개발/연동 > API Key 관리에서 발급받는다.
+SOLAPI_API_KEY = os.environ.get('SOLAPI_API_KEY', '')        # SOLAPI API Key
+SOLAPI_API_SECRET = os.environ.get('SOLAPI_API_SECRET', '')  # SOLAPI API Secret Key (서명용)
+SOLAPI_SENDER = os.environ.get('SOLAPI_SENDER', '')          # 사전 등록·승인된 발신번호
 
-# 실제 발송/과금 없이 연동만 점검하려면 환경변수 ALIGO_TEST_MODE=True 로 설정.
-ALIGO_TEST_MODE = os.environ.get('ALIGO_TEST_MODE', 'False') == 'True'
+# 실제 발송/과금 없이 흐름만 점검하려면 환경변수 SOLAPI_TEST_MODE=True 로 설정.
+# (이 경우 API를 호출하지 않고 성공으로 처리하며, 발송 내용은 로그에만 남는다.)
+SOLAPI_TEST_MODE = os.environ.get('SOLAPI_TEST_MODE', 'False') == 'True'
 
 # 외부 크론(cron-job.org 등)이 안내 문자 엔드포인트를 호출할 때 쓰는 비밀 토큰.
 # 아무나 호출하지 못하도록 막는 용도. 환경변수로 임의의 긴 문자열을 넣어두면 된다.
